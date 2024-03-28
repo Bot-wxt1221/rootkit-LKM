@@ -7,8 +7,6 @@
 #include <linux/sched.h>
 #include <linux/init_task.h>
 
-extern struct list_head hide_list_head;
-
 struct hide_node{
   pid_t pid;
   struct task_struct *task_use;
