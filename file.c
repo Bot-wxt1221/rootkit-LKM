@@ -1,5 +1,4 @@
 #include "file.h"
-
 static int open_file(struct inode *,struct file *);
 static int close_file(struct inode *,struct file *);
 static ssize_t read_file(struct file *,char *,size_t,loff_t *);
@@ -15,7 +14,7 @@ static struct file_operations file_ops={
   .open=open_file,
   .release=close_file
 };
-static char message[100205];
+char message[1005];
 
 inline static int open_file(struct inode *node,struct file *file){
   if(open_cnt){
@@ -26,16 +25,7 @@ inline static int open_file(struct inode *node,struct file *file){
   try_module_get(THIS_MODULE);//Avoid removing module when the file is opened.
   return 0;
 }
-inline static int close_file(struct inode *node,struct file *file){
-  if(open_cnt<=0){
-    printk(KERN_ALERT "File not open:%p",file);
-    return -ENOENT;
-  }
-  open_cnt--;
-  module_put(THIS_MODULE);
-  return 0;
-}
-inline static ssize_t read_file(struct file *file,char *buffer,size_t len,loff_t * offset){
+static ssize_t read_file(struct file *file,char *buffer,size_t len,loff_t * offset){
   int ret=copy_to_user(buffer,message,cur_message_size);
   if(ret!=0){
     printk(KERN_ALERT "Error while writing something.%p",file);
@@ -44,7 +34,7 @@ inline static ssize_t read_file(struct file *file,char *buffer,size_t len,loff_t
   printk(KERN_INFO "File write successfully %p",file);
   return 0;
 }
-inline static ssize_t write_file(struct file *file,const __user char *buffer,size_t len,loff_t * offset){
+static ssize_t write_file(struct file *file,const __user char *buffer,size_t len,loff_t * offset){
   printk(KERN_DEBUG "%p,%p",message,message+100000);
 //  strncpy(message,buffer,len);
   int ret=copy_from_user(message,buffer,len);
@@ -53,8 +43,20 @@ inline static ssize_t write_file(struct file *file,const __user char *buffer,siz
     return -EFAULT;
   }
   cur_message_size=strlen(message);
+  while(('a'>message[cur_message_size]||message[cur_message_size]>'z')&&cur_message_size>0&&message[cur_message_size]!='.'){
+    message[cur_message_size--]='\0';
+  }
   printk(KERN_INFO "File write successfully %p ,%lu, %d",file,len,cur_message_size);
   return len;
+}
+inline static int close_file(struct inode *node,struct file *file){
+  if(open_cnt<=0){
+    printk(KERN_ALERT "File not open:%p",file);
+    return -ENOENT;
+  }
+  open_cnt--;
+  module_put(THIS_MODULE);
+  return 0;
 }
 
 int init_file(void) {
@@ -71,7 +73,6 @@ int init_file(void) {
     printk(KERN_ALERT "Error while registering device class.");
     return PTR_ERR(register_class);
   }
-
   register_device=device_create(register_class,NULL,MKDEV(major_number,0),NULL,DEVICE_NAME);
   if(IS_ERR(register_device)){
     class_unregister(register_class);

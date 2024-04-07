@@ -11,4 +11,5 @@
 
 int init_file(void);
 void exit_file(void);
+extern char message[1005];
 #endif

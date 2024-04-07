@@ -10,6 +10,7 @@
 #include <linux/kprobes.h>
 #include <linux/kallsyms.h>
 #include "process.h"
+#include "file.h"
 
 void my_hook_syscall(void);
 void my_unregister_hook_syscall(void);
